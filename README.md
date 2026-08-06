@@ -8,6 +8,11 @@ Claude shows usage limits only inside the app (`/usage`) or on claude.ai. This p
 one glance away: the session percentage is drawn into the tray icon itself, and clicking
 it opens the popup above.
 
+## Download
+
+Grab `ClaudeUsageTray.exe` from the [latest release](https://github.com/jcyrio/ClaudeUsageTray/releases/latest)
+and run it. It is self-contained, so no .NET installation is needed.
+
 ## How it works
 
 It reads `%APPDATA%\Claude\plan-usage-history.json` — the rolling usage history the Claude
