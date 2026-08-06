@@ -8,7 +8,7 @@ public sealed record UsageSnapshot(
     int WeekPct,
     DateTime SampledAt,
     DateTime? SessionReset,
-    DateTime WeeklyReset);
+    DateTime? WeeklyReset);
 
 /// <summary>
 /// Reads the rolling usage history the Claude desktop app maintains at
@@ -27,10 +27,11 @@ public static class UsageReader
     /// <summary>
     /// Weekly windows are fixed-anchor, and they reset overnight -- inside the gap
     /// where the desktop app is closed and not sampling. That makes the weekly reset
-    /// impossible to derive from history, so the anchor is seeded from /usage once.
-    /// Any past occurrence works; it is rolled forward in 7-day steps.
+    /// impossible to derive from history, and it differs per account, so it cannot be
+    /// a build-time constant either. The user seeds it once from /usage; until then
+    /// the weekly reset time is reported as unknown rather than guessed.
     /// </summary>
-    public static DateTime WeeklyAnchor { get; set; } = new(2026, 8, 11, 1, 0, 0);
+    public static DateTime? WeeklyAnchor { get; set; } = Settings.LoadWeeklyAnchor();
 
     public static UsageSnapshot? Read(string? path = null)
     {
@@ -92,12 +93,12 @@ public static class UsageReader
         return null;
     }
 
-    static DateTime NextWeeklyReset()
+    static DateTime? NextWeeklyReset()
     {
-        var reset = WeeklyAnchor;
+        if (WeeklyAnchor is not { } anchor) return null;
         var now = DateTime.Now;
-        while (reset < now) reset = reset.AddDays(7);
-        return reset;
+        while (anchor < now) anchor = anchor.AddDays(7);
+        return anchor;
     }
 
     static int Pct(JsonElement sample, string key) =>

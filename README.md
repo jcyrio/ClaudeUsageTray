@@ -35,18 +35,19 @@ $s=(New-Object -ComObject WScript.Shell).CreateShortcut((Join-Path ([Environment
 
 ## One thing to set
 
-The weekly reset **anchor** is hardcoded in [`UsageReader.cs`](UsageReader.cs):
+Weekly windows reset overnight, while the desktop app is closed and not sampling, so the
+weekly reset time cannot be derived from the history file — and it differs per account.
+Until you set it, the popup says `Reset time not set` rather than guessing.
 
-```csharp
-public static DateTime WeeklyAnchor { get; set; } = new(2026, 8, 11, 1, 0, 0);
+Run `/usage` in Claude Code once, read off the weekly reset time, and write **any past
+occurrence** of it to `%APPDATA%\ClaudeUsageTray\settings.json`:
+
+```json
+{ "weeklyAnchor": "2026-08-11T01:00:00" }
 ```
 
-Weekly windows reset overnight, while the desktop app is closed and not sampling, so the
-reset time cannot be derived from the history file. Open `/usage` in Claude Code once, read
-off the weekly reset time, and put any past occurrence of it here — it rolls forward in
-seven-day steps from there.
-
-Session resets *are* derived from the data, accurate to within one sampling interval.
+It rolls forward in seven-day steps from there, so you only do this once. The percentages
+and the session reset need no configuration.
 
 ## Limitations
 

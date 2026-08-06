@@ -31,7 +31,11 @@ public partial class UsagePopup : Window
         SessionResetText.Text = snapshot.SessionReset is { } sr
             ? $"Resets {Format(sr)}"
             : "Reset time unknown";
-        WeekResetText.Text = $"Resets {Format(snapshot.WeeklyReset)}";
+
+        // Better to admit the anchor is unset than to show a confidently wrong time.
+        WeekResetText.Text = snapshot.WeeklyReset is { } wr
+            ? $"Resets {Format(wr)}"
+            : "Reset time not set — see README";
 
         var age = DateTime.Now - snapshot.SampledAt;
         FreshnessText.Text = age > TimeSpan.FromMinutes(20)
