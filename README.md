@@ -1,0 +1,69 @@
+# ClaudeUsageTray
+
+Your Claude session and weekly usage limits, in the Windows system tray.
+
+<img src="docs/screenshot.png" width="330" alt="The usage popup showing session and weekly bars">
+
+Claude shows usage limits only inside the app (`/usage`) or on claude.ai. This puts them
+one glance away: the session percentage is drawn into the tray icon itself, and clicking
+it opens the popup above.
+
+## How it works
+
+It reads `%APPDATA%\Claude\plan-usage-history.json` — the rolling usage history the Claude
+desktop app already maintains, sampled roughly every five minutes and kept for about two
+weeks. No API key, no token, no network calls.
+
+## Requirements
+
+- Windows 10 or 11
+- The Claude desktop app, installed and signed in
+
+## Usage
+
+Run `ClaudeUsageTray.exe`. Left-click the tray icon to toggle the popup; right-click for
+Refresh and Exit. Pass `--show` to open the popup immediately, which is handy if you want
+to bind it to a shortcut key.
+
+The tray number turns amber at 75% and red at 90%.
+
+To start it with Windows, drop a shortcut in your Startup folder:
+
+```powershell
+$s=(New-Object -ComObject WScript.Shell).CreateShortcut((Join-Path ([Environment]::GetFolderPath('Startup')) 'ClaudeUsageTray.lnk')); $s.TargetPath='<full path to ClaudeUsageTray.exe>'; $s.Save()
+```
+
+## One thing to set
+
+The weekly reset **anchor** is hardcoded in [`UsageReader.cs`](UsageReader.cs):
+
+```csharp
+public static DateTime WeeklyAnchor { get; set; } = new(2026, 8, 11, 1, 0, 0);
+```
+
+Weekly windows reset overnight, while the desktop app is closed and not sampling, so the
+reset time cannot be derived from the history file. Open `/usage` in Claude Code once, read
+off the weekly reset time, and put any past occurrence of it here — it rolls forward in
+seven-day steps from there.
+
+Session resets *are* derived from the data, accurate to within one sampling interval.
+
+## Limitations
+
+- Data can be **up to five minutes stale**, and stops updating entirely while the Claude
+  desktop app is closed. The popup says so rather than showing frozen numbers as current.
+- Session and all-model weekly only — the file holds no per-model breakdown.
+- The file format is undocumented and has changed before (it is currently `version: 2`),
+  so a Claude update could break this.
+
+## Build
+
+```
+dotnet build -c Release
+```
+
+Requires the .NET 8 SDK.
+
+## License
+
+MIT
