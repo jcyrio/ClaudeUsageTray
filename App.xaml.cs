@@ -14,9 +14,16 @@ public partial class App : System.Windows.Application
     DispatcherTimer _debounce = null!;
     FileSystemWatcher? _watcher;
 
+    // Held for the process lifetime. The scheduled task relaunches this exe periodically
+    // to self-heal, so a second copy must exit quietly rather than add a second tray icon.
+    static Mutex? _instanceLock;
+
     protected override void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
+
+        _instanceLock = new Mutex(initiallyOwned: true, @"Local\ClaudeUsageTray", out var isOnlyInstance);
+        if (!isOnlyInstance) { Shutdown(); return; }
 
         _popup = new UsagePopup();
         _tray = new NotifyIconHost();

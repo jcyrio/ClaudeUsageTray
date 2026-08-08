@@ -10,8 +10,17 @@ it opens the popup above.
 
 ## Download
 
-Grab `ClaudeUsageTray.exe` from the [latest release](https://github.com/jcyrio/ClaudeUsageTray/releases/latest)
-and run it. It is self-contained, so no .NET installation is needed.
+From the [latest release](https://github.com/jcyrio/ClaudeUsageTray/releases/latest), grab
+the build for your machine and run it. Both are self-contained, so no .NET installation is
+needed.
+
+| File | For |
+| --- | --- |
+| `ClaudeUsageTray-win-x64.exe` | Intel / AMD PCs — almost everyone |
+| `ClaudeUsageTray-win-arm64.exe` | ARM devices, e.g. Snapdragon-based Surface / Copilot+ PCs |
+
+Not sure which? Check **Settings → System → About → System type**. The x64 build also runs
+on ARM through emulation, just slower.
 
 ## How it works
 
