@@ -81,6 +81,12 @@ and the session reset need no configuration.
 - Session and all-model weekly only — the file holds no per-model breakdown.
 - The file format is undocumented and has changed before (it is currently `version: 2`),
   so a Claude update could break this.
+- **The Store install's path is an MSIX implementation detail, not a published location.**
+  It is found by globbing `%LOCALAPPDATA%\Packages\Claude_*\LocalCache\Roaming\Claude\`,
+  which assumes the package keeps the name `Claude`, that AppData redirection stays on, and
+  that `LocalCache\Roaming` remains where MSIX puts it. Any of those can change without
+  notice — a repackage, or a shift to a plain installer, would break discovery. The
+  symptom is a permanent "no data": nothing crashes, so check the paths above first.
 
 ## Build
 
