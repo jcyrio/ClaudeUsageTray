@@ -24,9 +24,20 @@ on ARM through emulation, just slower.
 
 ## How it works
 
-It reads `%APPDATA%\Claude\plan-usage-history.json` — the rolling usage history the Claude
-desktop app already maintains, sampled roughly every five minutes and kept for about two
-weeks. No API key, no token, no network calls.
+It reads the rolling usage history the Claude desktop app already maintains — sampled
+roughly every five minutes and kept for about two weeks. No API key, no token, no network
+calls.
+
+That file lives in one of two places, and the app checks both:
+
+| Claude install | Path |
+| --- | --- |
+| Store / MSIX | `%LOCALAPPDATA%\Packages\Claude_*\LocalCache\Roaming\Claude\plan-usage-history.json` |
+| Plain | `%APPDATA%\Claude\plan-usage-history.json` |
+
+The Store build is an MSIX package, and MSIX redirects a packaged app's `%APPDATA%` writes
+into its own `LocalCache`. So the obvious `%APPDATA%\Claude` path does not exist at all on
+most machines — checking only there is why versions before v1.0.2 reported "no data".
 
 ## Requirements
 

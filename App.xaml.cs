@@ -51,12 +51,13 @@ public partial class App : System.Windows.Application
 
     void StartWatching()
     {
-        var dir = Path.GetDirectoryName(UsageReader.DefaultPath);
+        var resolved = UsageReader.ResolvePath();
+        var dir = resolved is null ? null : Path.GetDirectoryName(resolved);
         if (dir is null || !Directory.Exists(dir)) return;
 
         try
         {
-            _watcher = new FileSystemWatcher(dir, Path.GetFileName(UsageReader.DefaultPath))
+            _watcher = new FileSystemWatcher(dir, Path.GetFileName(resolved!))
             {
                 NotifyFilter = NotifyFilters.LastWrite | NotifyFilters.Size | NotifyFilters.FileName,
                 EnableRaisingEvents = true

@@ -20,9 +20,56 @@ public sealed record UsageSnapshot(
 /// </summary>
 public static class UsageReader
 {
-    public static string DefaultPath { get; } = Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-        "Claude", "plan-usage-history.json");
+    const string FileName = "plan-usage-history.json";
+
+    /// <summary>
+    /// Where the desktop app keeps its usage history. There are two candidates, because
+    /// the Store build of Claude is an MSIX package. Inside that package's container
+    /// %APPDATA% resolves normally, but for any process outside it -- which is what this
+    /// app is -- those writes are redirected into the package's LocalCache. Checking only
+    /// %APPDATA% makes the app work when launched from inside Claude and report "no data"
+    /// everywhere else, which is exactly backwards from what users hit.
+    /// </summary>
+    public static IEnumerable<string> CandidatePaths()
+    {
+        // Plain installs, and the view from inside the MSIX container.
+        yield return Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+            "Claude", FileName);
+
+        // Store install, seen from outside the container. The publisher id can change, so
+        // match on the package name rather than hardcoding Claude_pzs8sxrjxfjjc.
+        var packages = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Packages");
+
+        string[] claudePackages;
+        try { claudePackages = Directory.GetDirectories(packages, "Claude_*"); }
+        catch (Exception) { yield break; }
+
+        foreach (var dir in claudePackages)
+            yield return Path.Combine(dir, "LocalCache", "Roaming", "Claude", FileName);
+    }
+
+    /// <summary>The most recently written candidate, or null if the app is not installed.</summary>
+    public static string? ResolvePath()
+    {
+        string? best = null;
+        var bestWrite = DateTime.MinValue;
+        foreach (var candidate in CandidatePaths())
+        {
+            try
+            {
+                var info = new FileInfo(candidate);
+                if (info.Exists && info.LastWriteTimeUtc > bestWrite)
+                {
+                    best = candidate;
+                    bestWrite = info.LastWriteTimeUtc;
+                }
+            }
+            catch (Exception) { /* unreadable candidate is simply not a candidate */ }
+        }
+        return best;
+    }
 
     /// <summary>
     /// Weekly windows are fixed-anchor, and they reset overnight -- inside the gap
@@ -40,7 +87,9 @@ public static class UsageReader
     /// </summary>
     public static UsageSnapshot? Read(string? path = null)
     {
-        path ??= DefaultPath;
+        path ??= ResolvePath();
+        if (path is null) return null;
+
         for (int attempt = 0; attempt < 3; attempt++)
         {
             var json = ReadOnce(path);
