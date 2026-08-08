@@ -33,11 +33,25 @@ public static class UsageReader
     /// </summary>
     public static DateTime? WeeklyAnchor { get; set; } = Settings.LoadWeeklyAnchor();
 
+    /// <summary>
+    /// The desktop app rewrites this file whole every few minutes, and our file watcher
+    /// fires while that is happening -- so a read can catch it truncated or half-written.
+    /// That surfaces as a parse failure, not an IO error, so both have to be retried.
+    /// </summary>
     public static UsageSnapshot? Read(string? path = null)
     {
-        var json = ReadWithRetry(path ?? DefaultPath);
-        if (json is null) return null;
+        path ??= DefaultPath;
+        for (int attempt = 0; attempt < 3; attempt++)
+        {
+            var json = ReadOnce(path);
+            if (json is not null && Parse(json) is { } snapshot) return snapshot;
+            Thread.Sleep(150);
+        }
+        return null;
+    }
 
+    static UsageSnapshot? Parse(string json)
+    {
         JsonDocument doc;
         try { doc = JsonDocument.Parse(json); }
         catch (JsonException) { return null; }
@@ -108,25 +122,18 @@ public static class UsageReader
     static DateTime SampleTime(JsonElement sample) =>
         DateTimeOffset.FromUnixTimeMilliseconds(sample.GetProperty("t").GetInt64()).LocalDateTime;
 
-    /// The desktop app rewrites this file while we may be reading it, so share
-    /// aggressively and retry rather than failing a refresh over a transient lock.
-    static string? ReadWithRetry(string path)
+    /// Share aggressively -- the desktop app holds this file open while rewriting it.
+    static string? ReadOnce(string path)
     {
-        for (int attempt = 0; attempt < 3; attempt++)
+        try
         {
-            try
-            {
-                using var fs = new FileStream(path, FileMode.Open, FileAccess.Read,
-                    FileShare.ReadWrite | FileShare.Delete);
-                using var reader = new StreamReader(fs);
-                return reader.ReadToEnd();
-            }
-            // Missing entirely is a permanent condition; a lock is transient.
-            catch (FileNotFoundException) { return null; }
-            catch (DirectoryNotFoundException) { return null; }
-            catch (UnauthorizedAccessException) { return null; }
-            catch (IOException) { Thread.Sleep(120); }
+            using var fs = new FileStream(path, FileMode.Open, FileAccess.Read,
+                FileShare.ReadWrite | FileShare.Delete);
+            using var reader = new StreamReader(fs);
+            return reader.ReadToEnd();
         }
-        return null;
+        // FileNotFound and DirectoryNotFound both derive from IOException.
+        catch (IOException) { return null; }
+        catch (UnauthorizedAccessException) { return null; }
     }
 }

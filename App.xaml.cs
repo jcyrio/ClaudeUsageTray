@@ -69,11 +69,17 @@ public partial class App : System.Windows.Application
         }
     }
 
+    UsageSnapshot? _lastGood;
+
     void Refresh()
     {
-        var snapshot = UsageReader.Read();
-        _popup.Apply(snapshot);
-        _tray.Update(snapshot);
+        // Even with retries a read can come back empty. Keep showing the last good
+        // sample rather than flashing "no data" -- its displayed age already tells the
+        // user how current it is, which is the honest signal. Only a read that has
+        // never succeeded shows nothing.
+        if (UsageReader.Read() is { } snapshot) _lastGood = snapshot;
+        _popup.Apply(_lastGood);
+        _tray.Update(_lastGood);
     }
 
     void TogglePopup()
