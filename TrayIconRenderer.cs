@@ -1,6 +1,5 @@
 using System.Drawing;
 using System.Drawing.Drawing2D;
-using System.Drawing.Text;
 using System.Runtime.InteropServices;
 
 namespace ClaudeUsageTray;
@@ -12,31 +11,41 @@ namespace ClaudeUsageTray;
 /// </summary>
 public static class TrayIconRenderer
 {
+    /// Icons are drawn at 32px and let the shell scale down; that survives high-DPI
+    /// taskbars better than drawing natively at 16px, where two digits have no room.
+    const int Size = 32;
+
+    /// Fraction of the canvas kept clear around the glyphs. Small on purpose -- the
+    /// number should fill the icon, since it is competing with app logos in the tray.
+    const float Margin = 0.04f;
+
+    /// Outline drawn under the fill to thicken strokes beyond what bold alone gives.
+    const float StrokeWidth = Size * 0.055f;
+
     [DllImport("user32.dll", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool DestroyIcon(IntPtr handle);
 
     public static Icon Render(int pct)
     {
-        const int size = 32;
-        using var bmp = new Bitmap(size, size);
+        var text = pct >= 100 ? "!" : pct.ToString();
+
+        using var bmp = new Bitmap(Size, Size);
         using (var g = Graphics.FromImage(bmp))
         {
             g.SmoothingMode = SmoothingMode.AntiAlias;
-            g.TextRenderingHint = TextRenderingHint.AntiAliasGridFit;
             g.Clear(Color.Transparent);
 
-            var text = pct >= 100 ? "!" : pct.ToString();
-            float emSize = text.Length >= 3 ? 15f : text.Length == 2 ? 21f : 24f;
+            using var family = ResolveFamily();
+            using var path = FitToCanvas(family, text);
+            var colour = ColorFor(pct);
+            using var pen = new Pen(colour, StrokeWidth) { LineJoin = LineJoin.Round };
+            using var brush = new SolidBrush(colour);
 
-            using var font = new Font("Segoe UI", emSize, FontStyle.Bold, GraphicsUnit.Pixel);
-            using var brush = new SolidBrush(ColorFor(pct));
-            using var format = new StringFormat
-            {
-                Alignment = StringAlignment.Center,
-                LineAlignment = StringAlignment.Center
-            };
-            g.DrawString(text, font, brush, new RectangleF(0, 0, size, size), format);
+            // Stroke first, then fill over it, so the outline only ever adds weight
+            // outward and never eats into the glyph shape.
+            g.DrawPath(pen, path);
+            g.FillPath(brush, path);
         }
 
         // Icon.FromHandle does not take ownership, so clone into a managed icon and
@@ -51,6 +60,49 @@ public static class TrayIconRenderer
         {
             DestroyIcon(handle);
         }
+    }
+
+    /// <summary>
+    /// Lays the text out at a nominal size, then scales it so the glyphs themselves --
+    /// not the font's line box, which carries ascender and descender padding a digit
+    /// never uses -- fill the icon. This is what makes one, two and three digit values
+    /// all render as large as they can rather than sharing one conservative size.
+    /// </summary>
+    static GraphicsPath FitToCanvas(FontFamily family, string text)
+    {
+        const float nominal = 100f;
+        var style = family.IsStyleAvailable(FontStyle.Bold) ? FontStyle.Bold : FontStyle.Regular;
+
+        var path = new GraphicsPath();
+        path.AddString(text, family, (int)style, nominal, PointF.Empty, StringFormat.GenericTypographic);
+
+        var bounds = path.GetBounds();
+        if (bounds.Width <= 0 || bounds.Height <= 0) return path;
+
+        var inset = Size * Margin + StrokeWidth / 2f;
+        var available = Size - inset * 2f;
+        var scale = Math.Min(available / bounds.Width, available / bounds.Height);
+
+        using var transform = new Matrix();
+        transform.Scale(scale, scale, MatrixOrder.Append);
+        transform.Translate(
+            -bounds.X * scale + (Size - bounds.Width * scale) / 2f,
+            -bounds.Y * scale + (Size - bounds.Height * scale) / 2f,
+            MatrixOrder.Append);
+        path.Transform(transform);
+
+        return path;
+    }
+
+    /// Segoe UI Black is the heaviest weight shipped with Windows; fall back in order.
+    static FontFamily ResolveFamily()
+    {
+        foreach (var name in new[] { "Segoe UI Black", "Arial Black", "Segoe UI" })
+        {
+            try { return new FontFamily(name); }
+            catch (ArgumentException) { /* not installed */ }
+        }
+        return FontFamily.GenericSansSerif;
     }
 
     static Color ColorFor(int pct) => pct switch

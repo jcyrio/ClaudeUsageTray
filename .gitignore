@@ -12,3 +12,12 @@ obj/
 # Local publish output
 publish/
 dist/
+
+# Secrets — never commit. These still sync via Seafile (they are not in the
+# library's seafile-ignore.txt), so backups are unaffected.
+.env
+*.pem
+*.key
+*.pfx
+id_rsa
+id_ed25519
