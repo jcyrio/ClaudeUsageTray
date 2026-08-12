@@ -19,9 +19,6 @@ public static class TrayIconRenderer
     /// number should fill the icon, since it is competing with app logos in the tray.
     const float Margin = 0.04f;
 
-    /// Outline drawn under the fill to thicken strokes beyond what bold alone gives.
-    const float StrokeWidth = Size * 0.055f;
-
     [DllImport("user32.dll", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool DestroyIcon(IntPtr handle);
@@ -38,13 +35,7 @@ public static class TrayIconRenderer
 
             using var family = ResolveFamily();
             using var path = FitToCanvas(family, text);
-            var colour = ColorFor(pct);
-            using var pen = new Pen(colour, StrokeWidth) { LineJoin = LineJoin.Round };
-            using var brush = new SolidBrush(colour);
-
-            // Stroke first, then fill over it, so the outline only ever adds weight
-            // outward and never eats into the glyph shape.
-            g.DrawPath(pen, path);
+            using var brush = new SolidBrush(ColorFor(pct));
             g.FillPath(brush, path);
         }
 
@@ -71,7 +62,7 @@ public static class TrayIconRenderer
     static GraphicsPath FitToCanvas(FontFamily family, string text)
     {
         const float nominal = 100f;
-        var style = family.IsStyleAvailable(FontStyle.Bold) ? FontStyle.Bold : FontStyle.Regular;
+        var style = family.IsStyleAvailable(FontStyle.Regular) ? FontStyle.Regular : FontStyle.Bold;
 
         var path = new GraphicsPath();
         path.AddString(text, family, (int)style, nominal, PointF.Empty, StringFormat.GenericTypographic);
@@ -79,7 +70,7 @@ public static class TrayIconRenderer
         var bounds = path.GetBounds();
         if (bounds.Width <= 0 || bounds.Height <= 0) return path;
 
-        var inset = Size * Margin + StrokeWidth / 2f;
+        var inset = Size * Margin;
         var available = Size - inset * 2f;
         var scale = Math.Min(available / bounds.Width, available / bounds.Height);
 
@@ -94,10 +85,10 @@ public static class TrayIconRenderer
         return path;
     }
 
-    /// Segoe UI Black is the heaviest weight shipped with Windows; fall back in order.
+    /// Segoe UI is the Windows shell font, so the number matches the rest of the tray.
     static FontFamily ResolveFamily()
     {
-        foreach (var name in new[] { "Segoe UI Black", "Arial Black", "Segoe UI" })
+        foreach (var name in new[] { "Segoe UI", "Arial" })
         {
             try { return new FontFamily(name); }
             catch (ArgumentException) { /* not installed */ }
