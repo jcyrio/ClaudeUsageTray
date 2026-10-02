@@ -142,14 +142,18 @@ public sealed class NotifyIconHost : IDisposable
         var pct = snapshot?.SessionPct ?? 0;
 
         var previous = _current;
-        _current = TrayIconRenderer.Render(pct);
+        _current = TrayIconRenderer.Render(pct, snapshot?.IsStale ?? false);
         _icon.Icon = _current;
         previous?.Dispose();
 
         // NotifyIcon.Text is capped at 63 characters by the shell.
-        _icon.Text = snapshot is null
-            ? "Claude usage - no data"
-            : $"Session {snapshot.SessionPct}%  |  Week {snapshot.WeekPct}%";
+        _icon.Text = snapshot switch
+        {
+            null => "Claude usage - no data",
+            { IsStale: true } =>
+                $"STALE {UsagePopup.HumaniseAge(snapshot.Age)}: Session {snapshot.SessionPct}% | Week {snapshot.WeekPct}%",
+            _ => $"Session {snapshot.SessionPct}%  |  Week {snapshot.WeekPct}%"
+        };
     }
 
     public void Dispose()

@@ -66,7 +66,7 @@
             <!-- Freshness: the file only advances while the Claude desktop app runs,
                  so stale data must be visible rather than silently shown as current. -->
             <Border Margin="0,16,0,0" BorderBrush="{StaticResource Edge}" BorderThickness="0,1,0,0" Padding="0,8,0,0">
-                <TextBlock x:Name="FreshnessText" Style="{StaticResource Sub}"/>
+                <TextBlock x:Name="FreshnessText" Style="{StaticResource Sub}" TextWrapping="Wrap"/>
             </Border>
 
         </StackPanel>

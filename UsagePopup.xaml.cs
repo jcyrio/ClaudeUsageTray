@@ -37,11 +37,17 @@ public partial class UsagePopup : Window
             ? $"Resets {Format(wr)}"
             : "Reset time not set — see README";
 
-        var age = DateTime.Now - snapshot.SampledAt;
-        FreshnessText.Text = age > TimeSpan.FromMinutes(20)
-            ? $"Stale: last sample {Humanise(age)} ago (Claude desktop app not running)"
-            : $"Updated {Humanise(age)} ago";
+        FreshnessText.Text = snapshot.IsStale
+            ? $"Stale: last sample {Humanise(snapshot.Age)} ago. Start the Claude desktop app, " +
+              "or open its usage panel from Claude's own tray icon to resume sampling."
+            : $"Updated {Humanise(snapshot.Age)} ago";
+        FreshnessText.Foreground = snapshot.IsStale ? StaleBrush : (System.Windows.Media.Brush)FindResource("Muted");
     }
+
+    static readonly System.Windows.Media.Brush StaleBrush =
+        new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(233, 168, 96));
+
+    public static string HumaniseAge(TimeSpan span) => Humanise(span);
 
     static void SetBar(ColumnDefinition fill, ColumnDefinition rest, int pct)
     {

@@ -23,7 +23,9 @@ public static class TrayIconRenderer
     [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool DestroyIcon(IntPtr handle);
 
-    public static Icon Render(int pct)
+    /// A stale number is drawn grey, overriding the threshold colours, so an old 95% does
+    /// not keep shouting red and a frozen 4% does not pass for current.
+    public static Icon Render(int pct, bool stale = false)
     {
         var text = pct >= 100 ? "!" : pct.ToString();
 
@@ -35,7 +37,7 @@ public static class TrayIconRenderer
 
             using var family = ResolveFamily();
             using var path = FitToCanvas(family, text);
-            using var brush = new SolidBrush(ColorFor(pct));
+            using var brush = new SolidBrush(stale ? StaleColor : ColorFor(pct));
             g.FillPath(brush, path);
         }
 
@@ -95,6 +97,8 @@ public static class TrayIconRenderer
         }
         return FontFamily.GenericSansSerif;
     }
+
+    static readonly Color StaleColor = Color.FromArgb(120, 118, 112);
 
     static Color ColorFor(int pct) => pct switch
     {

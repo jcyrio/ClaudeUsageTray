@@ -8,19 +8,31 @@ public sealed record UsageSnapshot(
     int WeekPct,
     DateTime SampledAt,
     DateTime? SessionReset,
-    DateTime? WeeklyReset);
+    DateTime? WeeklyReset)
+{
+    public TimeSpan Age => DateTime.Now - SampledAt;
+    public bool IsStale => Age > UsageReader.StaleAfter;
+}
 
 /// <summary>
 /// Reads the rolling usage history the Claude desktop app maintains at
 /// %APPDATA%\Claude\plan-usage-history.json. Samples look like:
 ///   { "t": 1786054150069, "org": "...", "u": { "fh": 16, "sd": 27 } }
 /// where "fh" is five-hour session utilisation and "sd" is seven-day, both percent.
-/// The app appends a sample roughly every five minutes while it is running, and
+/// The app appends a sample roughly every fifteen minutes while it is running, and
 /// keeps about fourteen days of history.
 /// </summary>
 public static class UsageReader
 {
     const string FileName = "plan-usage-history.json";
+
+    /// <summary>
+    /// Past this age the numbers are no longer current. Two missed fifteen-minute samples,
+    /// plus slack. Since desktop build 2.19675 sampling also stops while the app is running,
+    /// once its own usage panel has gone unopened for 24 hours -- so a stale file no longer
+    /// implies the app is closed, and the UI must not claim it does.
+    /// </summary>
+    public static readonly TimeSpan StaleAfter = TimeSpan.FromMinutes(35);
 
     /// <summary>
     /// Where the desktop app keeps its usage history. There are two candidates, because

@@ -1,3 +1,12 @@
+> [!WARNING]
+> **This project is deprecated. Use [ClaudeUsageTray2](https://github.com/jcyrio/ClaudeUsageTray2) instead.**
+>
+> This version reads a usage history file kept by the Claude desktop app. Since desktop
+> build 2.19675, the app stops updating that file unless its own usage panel was opened
+> in the last 24 hours, so the numbers here go stale. ClaudeUsageTray2 asks Claude for
+> your usage directly. It doesn't need the desktop app, shows exact reset times and
+> per-model limits, and has a guided first-run setup.
+
 # ClaudeUsageTray
 
 Your Claude session and weekly usage limits, in the Windows system tray.
@@ -76,8 +85,12 @@ and the session reset need no configuration.
 
 ## Limitations
 
-- Data can be **up to five minutes stale**, and stops updating entirely while the Claude
-  desktop app is closed. The popup says so rather than showing frozen numbers as current.
+- Data can be **up to fifteen minutes stale**, and stops updating entirely while the Claude
+  desktop app is closed. Since desktop build 2.19675 it *also* stops while the app is
+  running, once Claude's own usage panel (on its tray icon) has gone unopened for 24 hours —
+  opening that panel resumes sampling. Past 35 minutes the tray number turns grey, the
+  tooltip says `STALE`, and the popup explains how to resume, rather than showing frozen
+  numbers as current.
 - Session and all-model weekly only — the file holds no per-model breakdown.
 - The file format is undocumented and has changed before (it is currently `version: 2`),
   so a Claude update could break this.
